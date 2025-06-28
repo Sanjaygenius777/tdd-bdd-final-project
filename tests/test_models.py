@@ -27,7 +27,7 @@ import os
 import logging
 import unittest
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -189,3 +189,42 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(),count)
         for product in found:
             self.assertEqual(product.category,product_category)
+
+
+    def test_update_without_id_raises(self):
+        """It should raise DataValidationError when updating without id"""
+        product = ProductFactory()
+        product.id = None
+        self.assertRaises(DataValidationError,product.update)   
+
+    def test_deserialize_missing_name(self):
+        """It should raise DataValidationError when 'name' is missing"""
+        Data = {
+            "description": "Missing name",
+            "price": "5.99",
+            "available": True,
+            "category": "FOOD"
+            }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(Data)
+        
+    def test_deserialize_wrong_boolean(self):
+        """It should raise DataValidationError when boolena value is wrong"""
+        Data = {
+            "description": "Missing name",
+            "price": "5.99",
+            "available": "yes",
+            "category": "INVALID CATEGORY",
+            "name":"Nintendo"
+            }
+        product = Product()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(Data)
+
+    def test_deserialize_wrong_input(self):
+        """It should raise DataValidationError when input argument is wrong"""
+        product = ProductFactory()
+        Data=product
+        with self.assertRaises(DataValidationError):
+            product.deserialize(Data)
