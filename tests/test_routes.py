@@ -28,6 +28,7 @@ import os
 import logging
 from decimal import Decimal
 from unittest import TestCase
+from urllib.parse import quote_plus
 from service import app
 from service.common import status
 from service.models import db, init_db, Product
@@ -166,6 +167,55 @@ class TestProductRoutes(TestCase):
     #
     # ADD YOUR TEST CASES HERE
     #
+    def test_get_product(self):
+        """It should return a product"""
+        test_product=self._create_products(1)[0]
+        response=self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        data=response.get_json()
+        self.assertEqual(data['name'],test_product.name)
+
+    def test_get_product_not_found(self):
+        """It should test bad path of get product"""
+        response=self.client.get(f"{BASE_URL}/{0}")
+        self.assertEqual(response.status_code,status.HTTP_404_NOT_FOUND)
+
+    def test_update_a_product(self):
+        """It should update a product"""
+        test_product=ProductFactory()
+        response=self.client.post(BASE_URL,json=test_product.serialize())
+        self.assertEqual(response.status_code,status.HTTP_201_CREATED)
+
+        new_product=response.get_json()
+        new_product['name']="Nintendo"
+        response=self.client.put(f"{BASE_URL}/{new_product['id']}",json=new_product)
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        update_product=response.get_json()
+        self.assertEqual(update_product['name'],'Nintendo')
+
+    def test_delete_a_product(self):
+        """IT should delete the product"""
+        products=self._create_products(5)
+        count=self.get_product_count()
+        test_product=products[0]
+        response=self.client.delete(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code,status.HTTP_204_NO_CONTENT)
+        self.assertIsNone(response.get_json())
+
+        response=self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code,status.HTTP_404_NOT_FOUND)
+        new_count=self.get_product_count()
+        self.assertEqual(new_count,count-1)
+
+    def test_get_all_product(self):
+        """It should return all the products"""
+        products=self._create_products(5)
+        response=self.client.get(BASE_URL)
+        self.assertEqual(response.status_code,status.HTTP_200_OK)
+        count=len(response.get_json())
+        self.assertEqual(count,5)
+        
+    def test_list_all_products_by_name(self):
 
     ######################################################################
     # Utility functions
@@ -176,5 +226,5 @@ class TestProductRoutes(TestCase):
         response = self.client.get(BASE_URL)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.get_json()
-        # logging.debug("data = %s", data)
+        logging.debug("data = %s", data)
         return len(data)
